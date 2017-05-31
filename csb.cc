@@ -605,6 +605,7 @@ public:
             while (pool_ct < POOL/5) {
                 Solution bestProxy = sol;
                 bestProxy.shift();
+		bestProxy.mutate();
                 pool[pool_ct++] = bestProxy;
                 
                 if (get_score(&bestProxy) > get_score(&best)) best = bestProxy;
@@ -635,7 +636,7 @@ public:
             
             int poolC = 2;
             
-            while (TIME < time && poolC < POOL) {
+            while (TIME < time && poolC < POOL * .7) {
                 int aIdx = rnd(POOL);
                 int bIdx = rnd(POOL);
                 while (aIdx == bIdx) bIdx = rnd(POOL);
@@ -650,7 +651,6 @@ public:
                 int secondIdx = (get_score(&pool[aIdx]) > get_score(&pool[bIdx])) ? aIdx : bIdx;
                 
                 Solution child = merge(&pool[firstIdx], &pool[secondIdx]);
-                child.mutate();
                 
                 if (get_score(&child) > get_score(&best)) {
                     best = child;
@@ -659,6 +659,19 @@ public:
                 
                 newPool[poolC++] = child;
             }
+
+            while (TIME < time && poolC < POOL) {
+		int aIdx = rnd(POOL);
+		int bIdx = rnd(POOL);
+		while (aIDx == bIdx) bIdx = rnd(POOL);
+
+		int Idx = (get_score(&pool[aIdx]) > get_score(&pool[bIdx])) ? aIdx : bIdx;
+
+		Solution mutant = pool[Idx];
+		mutant.mutate();
+
+		newPool[poolC++] = mutant;
+	    }
             
             for (int i = 0; i < POOL; ++i) pool[i] = newPool[i];
             
