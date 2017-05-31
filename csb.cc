@@ -1,7 +1,4 @@
-#pragma GCC optimize("Ofast")
-#pragma GCC optimize("inline")
-#pragma GCC optimize("omit-frame-pointer")
-#pragma GCC optimize("unroll-loops")
+#pragma GCC optimize("Ofast", "inline", "omit-frame-pointer", "unroll-loops")
 
 #include "stdio.h"
 #include "math.h"
@@ -37,6 +34,9 @@ constexpr float SHIELD_DEPTH = 9; //p is 1/S_D
 constexpr float P_MUTATE_SHIELD = 15; //p for a single shield mutation. (*2 when considering both);
 constexpr int POOL = 20;
 constexpr int MAX_THRUST = 200;
+constexpr int AMPLITUDE_ANGLE = 26;
+constexpr int AMPLITUDE_MIN_THRUST = -30;
+constexpr int AMPLITUDE_MAX_THRUST = 280;
 
 constexpr float E = 0.00001;
 
@@ -44,7 +44,6 @@ int r = -1;
 int turn = 0;
 int gen_ct = 0;
 int best_gen_ct = 0;
-bool is_p2 = false;
 
 int cp_ct, laps;
 int myTimeout = 100, hisTimeout = 100;
@@ -98,41 +97,7 @@ public:
         this->x = x;
         this->y = y;
     }
-
-    inline Point closest(Point* a, Point* b) {
-        float da = b->y - a->y;
-        float db = a->x - b->x;
-        float c1 = da*a->x + db*a->y;
-        float c2 = -db*x + da*y;
-        float det = da*da + db*db;
-
-        float cx, cy;
-        if (det != 0) {
-            cx = (da*c1 - db*c2) / det;
-            cy = (da*c2 + db*c1) / det;
-        } else {
-            cx = x, cy = y;
-        }
-
-        return Point(cx, cy);
-    }
 };
-
-inline float dist(float x1, float y1, float x2, float y2) {
-	return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-}
-
-inline float dist2(float x1, float y1, float x2, float y2) {
-	return (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
-}
-
-inline float dist(Point* p, float x, float y) {
-	return sqrt((x - p->x) * (x - p->x) + (y - p->y) * (y - p->y));
-}
-
-inline float dist2(Point* p, float x, float y) {
-	return (x - p->x) * (x - p->x) + (y - p->y) * (y - p->y);
-}
 
 inline float dist(Point* p1, Point* p2) {
 	return sqrt((p1->x - p2->x) * (p1->x - p2->x) + (p1->y - p2->y) * (p1->y - p2->y));
@@ -180,7 +145,7 @@ public:
     }
     
     float speedTo(Point* p) {
-        float d = 1.0 / dist(this, p->x, p->y);
+        float d = 1.0 / dist(this, p);
 
         float dx = (p->x - this->x) * d;
         float dy = (p->y - this->y) * d;
@@ -388,7 +353,6 @@ public:
         this->vy = vy;
         this->ncpid = ncpid;
 
-        if (is_p2 && id > 1) swap(angle, this->next_angle);
         this->angle = angle;
         if (::r == 0) this->angle = diff_angle(cps[1]);
     }
@@ -458,13 +422,13 @@ public:
     inline void randomize(int idx, bool full = false) {
         int r = rnd(2);
         if (full || r == 0) {
-            angles[idx] = max(-18, min(18, rnd(-22, 22)));
-            angles[idx+DEPTH] = max(-18, min(18, rnd(-22, 22)));
+            angles[idx] = max(-18, min(18, rnd(-AMPLITUDE_ANGLE, AMPLITUDE_ANGLE)));
+            angles[idx+DEPTH] = max(-18, min(18, rnd(-AMPLITUDE_ANGLE, AMPLITUDE_ANGLE)));
         }
 
         if (full || r == 1) {
-            thrusts[idx] = max(0, min(MAX_THRUST, rnd((int) (-0.1*MAX_THRUST), 1.5*MAX_THRUST)));
-            thrusts[idx+DEPTH] = max(0, min(MAX_THRUST, rnd((int) (-0.1*MAX_THRUST), 1.5*MAX_THRUST)));
+            thrusts[idx] = max(0, min(MAX_THRUST, rnd(AMPLITUDE_MIN_THRUST, AMPLITUDE_MAX_THRUST)));
+            thrusts[idx+DEPTH] = max(0, min(MAX_THRUST, rnd(AMPLITUDE_MIN_THRUST, AMPLITUDE_MAX_THRUST)));
         }
         score = -1;
     }
@@ -887,9 +851,6 @@ inline void print_move(int shieldTurn, int thrust, float angle, Pod* pod) {
 //*****************************************************************************************//
 
 int main() {
-    string str1 = "";
-    string str2 = "";
-    
     cin >> laps >> cp_ct;
     for (int i = 0; i < cp_ct; i++) {
         int cx, cy;
@@ -966,13 +927,7 @@ int main() {
             gen_ct = 0;
             best_gen_ct = 0;
         }
-    
-        str1 = str1 + "(" + to_string(me.sol.thrusts[0]) + "," + to_string((int)me.sol.angles[0]) + ")";
-        str2 = str2 + "(" + to_string(me.sol.thrusts[1]) + "," + to_string((int)me.sol.angles[1]) + ")";
-        
-        cerr << str1 << endl;
-        cerr << str2 << endl;
-        
+           
         print_move(me.sol.shieldTurn1, me.sol.thrusts[0], me.sol.angles[0], pods[0]);
         print_move(me.sol.shieldTurn2, me.sol.thrusts[DEPTH], me.sol.angles[DEPTH], pods[1]);
 
