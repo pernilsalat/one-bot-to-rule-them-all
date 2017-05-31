@@ -669,7 +669,12 @@ public:
 
 		Solution mutant = pool[Idx];
 		mutant.mutate();
-
+		
+		if (get_score(&mutant) > get_score(&best)) {
+			best = mutant;
+			best_gen = current_gen
+		}
+		
 		newPool[poolC++] = mutant;
 	    }
             
