@@ -39,6 +39,9 @@ constexpr int AMPLITUDE_MAX_THRUST = 280;
 
 constexpr float E = 0.00001;
 
+float COS[360];
+float SIN[360];
+
 int iteration = -1;
 int turn = 0;
 int gen_ct = 0;
@@ -238,11 +241,9 @@ class Pod: public Unit {
 
         inline void boost(int thrust) {
             if (shield > 0) return;
-
-            float ra = angle * M_PI / 180.0;
-
-            vx += cos(ra) * thrust;
-            vy += sin(ra) * thrust;
+            
+            vx += COS[(int)angle] * thrust;
+            vy += SIN[(int)angle] * thrust;
         }
 
         inline void move(float t) {
@@ -868,6 +869,13 @@ inline void print_move(int shieldTurn, int thrust, float angle, Pod* pod) {
 //*****************************************************************************************//
 
 int main() {
+    
+    for (int i = 0; i < 360; ++i) {
+        float ra = i * M_PI / 180.0;
+        COS[i] = cos(ra);
+        SIN[i] = sin(ra);
+    }
+    
     cin >> laps >> cp_ct;
     for (int i = 0; i < cp_ct; i++) {
         int cx, cy;
