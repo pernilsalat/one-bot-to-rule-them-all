@@ -70,6 +70,18 @@ inline int addrnd(int a, int b) {
     return a + rnd(b - a + 1);
 }
 
+float fastsqrt(const float x)
+{
+    union {
+        int i;
+        float x;
+    } u;
+
+    u.x = x;
+    u.i = (1<<29) + (u.i >> 1) - (1<<22);
+    return u.x;
+}
+
 //*****************************************************************************************//
 
 class Collision {
@@ -102,7 +114,7 @@ class Point {
 };
 
 inline float dist(Point* p1, Point* p2) {
-    return sqrt((p1->x - p2->x) * (p1->x - p2->x) + (p1->y - p2->y) * (p1->y - p2->y));
+    return fastsqrt((p1->x - p2->x) * (p1->x - p2->x) + (p1->y - p2->y) * (p1->y - p2->y));
 }
 
 class Unit: public Point {
@@ -136,7 +148,7 @@ class Unit: public Point {
 
             if (delta < 0.0) return -1;
 
-            float t = (b - sqrt(delta))*(1.0/(2.0*a));
+            float t = (b - fastsqrt(delta))*(1.0/(2.0*a));
 
             if (t <= 0.0 || t > 1.0) return -1;
 
@@ -301,7 +313,7 @@ class Pod: public Unit {
             u->vx += fx * m2_inv;
             u->vy += fy * m2_inv;
 
-            float impulse = sqrt(fx*fx + fy*fy);
+            float impulse = fastsqrt(fx*fx + fy*fy);
             if (impulse < 120.) {
                 float df = 120.0 / impulse;
                 fx *= df;
