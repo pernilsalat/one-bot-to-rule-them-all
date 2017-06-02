@@ -33,9 +33,9 @@ constexpr float SHIELD_DEPTH = 9; //p is 1/S_D
 constexpr float P_MUTATE_SHIELD = 15; //p for a single shield mutation. (*2 when considering both);
 constexpr int POOL = 20;
 constexpr int MAX_THRUST = 200;
-constexpr int AMPLITUDE_ANGLE = 26;
+constexpr int AMPLITUDE_ANGLE = 36;
 constexpr int AMPLITUDE_MIN_THRUST = -30;
-constexpr int AMPLITUDE_MAX_THRUST = 280;
+constexpr int AMPLITUDE_MAX_THRUST = 300;
 
 constexpr float E = 0.00001;
 
