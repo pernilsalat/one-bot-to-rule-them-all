@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+[[ -z "$2" ]] && echo "You need at least two arguments for this, lol" && exit
+
+g++ $1 -o Player1 || exit
+g++ $2 -o Player2 || exit
+
+python3 arena.py "$PWD/Player1" "$PWD/Player2"
