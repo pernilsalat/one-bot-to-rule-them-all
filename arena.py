@@ -26,6 +26,21 @@ class Pod:
         self.boost = 650
         self.has_boost = True
         self.shield_multiplier = 10
+        self.shield_status = 0
+        self.lost = False
+
+    def update(commands):
+        cmd = commands.split(" ")
+        if cmd[2] == "BOOST":
+            if has_boost == True: 
+                cmd[2] = str(self.boost)
+                has_boost == False
+            else:
+                self.lost = True
+        if cmd[2] == "SHIELD":
+            if self.shield_status == 0:
+                self.shield_status = 3
+                cmd[2] = 0
 
 class Game:
     def __init__(self, p1, p2):
@@ -75,6 +90,10 @@ class Game:
     def calculate(self):
         bot0, bot1 = self.getResponse(self.Player1)
         bot2, bot3 = self.getResponse(self.Player2)
+        self.Pods[0].update(bot0)
+        self.Pods[0].update(bot1)
+        self.Pods[0].update(bot2)
+        self.Pods[0].update(bot3)
 
     def sendPlayers(self, debug, msg):
         self.sendPlayer1(debug,msg)
