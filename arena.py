@@ -14,11 +14,25 @@ class Player:
         self.x = x
         self.y = y
 
+class Pod:
+    def __init__(self):
+        self.x = random.randrange(16000)
+        self.y = random.randrange(9000)
+        self.angle = 0.00
+        self.facing = [0,0]
+        self.speed = [0,0]
+        self.radius = 400
+        self.friction = 0.85
+        self.boost = 650
+        self.has_boost = True
+        self.shield_multiplier = 10
+
 class Game:
     def __init__(self, p1, p2):
         self.Player1 = Player(p1)
         self.Player2 = Player(p2)
         self.initCircuit()
+        self.initPods()
 
     def initCircuit(self):
         self.initRand()
@@ -37,12 +51,59 @@ class Game:
     def initCheckpoint(self):
         return (random.randrange(16000), random.randrange(9000), 600)
 
+    def initPods(self):
+        self.Pods = [Pod() for i in range(4)]
+
     def start(self):
-        print("Laps: ", self.Laps)
-        print("Checkpoints: ", len(self.Checkpoints))
+        self.sendPlayers("Laps: ", str(self.Laps))
+        self.sendPlayers("Checkpoints: ", str(len(self.Checkpoints)))
         for cp in self.Checkpoints:
-            print(cp[0],cp[1])
-        pass
+            self.sendPlayers("CP: ", str(cp[0]) + " " + str(cp[1]))
+        self.sendTurn()
+        self.calculate()
+
+    def sendTurn(self):
+        self.sendPod(0, self.Player1)
+        self.sendPod(1, self.Player1)
+        self.sendPod(2, self.Player1)
+        self.sendPod(3, self.Player1)
+        self.sendPod(2, self.Player2)
+        self.sendPod(3, self.Player2)
+        self.sendPod(0, self.Player2)
+        self.sendPod(1, self.Player2)
+
+    def calculate(self):
+        bot0, bot1 = self.getResponse(self.Player1)
+        bot2, bot3 = self.getResponse(self.Player2)
+
+    def sendPlayers(self, debug, msg):
+        self.sendPlayer1(debug,msg)
+        self.sendPlayer2(debug,msg)
+    
+    def sendPlayer1(self, debug, msg):
+        print(debug, msg)
+        self.Player1.handle.stdin.write((msg+"\n").encode('utf-8'))
+
+    def sendPlayer2(self, debug, msg):
+        print(debug, msg)
+        self.Player2.handle.stdin.write((msg+"\n").encode('utf-8'))
+
+    def sendPod(self, index, player):
+        pod = self.Pods[index]
+        msg = str(pod.x) + " " + str(pod.y) + " "
+        msg += str(pod.speed[0]) + " " + str(pod.speed[1]) + " "
+        msg += str(int(pod.angle)) + " 1"
+        print("Pod: ", msg)
+        player.handle.stdin.write((msg+"\n").encode('utf-8'))
+
+    def getResponse(self, player):
+        player.handle.stdin.flush()
+        msg1 = player.handle.stdout.readline()
+        print(player.name, msg1.decode('utf-8'))
+        msg2 = player.handle.stdout.readline()
+        print(player.name, msg2.decode('utf-8'))
+        return msg1, msg2
+
 
     def end(self):
         self.Player1.handle.kill()
