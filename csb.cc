@@ -44,10 +44,9 @@ constexpr float E = 0.00001;
 float COS[360];
 float SIN[360];
 
-int iteration = -1;
+int game_turn = -1;
 int turn = 0;
-int gen_ct = 0;
-int best_gen_ct = 0;
+int simulations = 0;
 
 int cp_ct, laps;
 int myTimeout = 100, hisTimeout = 100;
@@ -355,7 +354,7 @@ class Pod: public Unit {
             this->ncpid = ncpid;
 
             this->angle = angle;
-            if (iteration == 0) this->angle = diff_angle(cps[1]);
+            if (game_turn == 0) this->angle = diff_angle(cps[1]);
         }
 
         inline void update(int shield, bool has_boost) {
@@ -625,9 +624,13 @@ class ReflexBot : public Bot {
 class RandomBot : public Bot {
     public:
         SimpleSolution sol;
-        Bot* oppBot;
+        ReflexBot* oppBot;
         
-        RandomBot(int id = 2) {this->id = id;}
+        RandomBot(){};
+        RandomBot(int id = 2, ReflexBot* oppBot = new ReflexBot) {
+            this->id = id;
+            this->oppBot = oppBot;
+        }
         
         inline void move(SimpleSolution& sol) {
             if (sol.shieldTurn1 == 0) {
@@ -648,7 +651,6 @@ class RandomBot : public Bot {
         
         inline void generate() {
             SimpleSolution sol = SimpleSolution(true);
-            
             for (int i = 0; i < RANDOMBOT_GENERATE_NUM; ++i) {
                 SimpleSolution newSol = SimpleSolution(true);
                 if (get_score(sol) < get_score(newSol)) sol = newSol;
@@ -718,7 +720,6 @@ class SearchBot : public Bot {
                 compareSolutions(pool[id], newSol);
                 compareSolutions(best, newSol);
                 
-                ++gen_ct;
             }
             
             sol = best;
@@ -903,13 +904,13 @@ int main() {
     me.oppBots.push_back(&opp_reflex);
     
     for (int i = 0; i < RANDOMBOT_NUM; ++i) {
-        RandomBot* opp_random = new RandomBot();
+        RandomBot* opp_random = new RandomBot(2, &me_reflex);
         me.oppBots.push_back(opp_random);
     }
     
 
     while (1) {
-        iteration++;
+        game_turn++;
 
 
         int x1, y1, vx1, vy1, angle1, ncpid1;
@@ -942,7 +943,7 @@ int main() {
 
         now = high_resolution_clock::now();
 
-        float time_limit = iteration ? 0.142 : 0.98;
+        float time_limit = game_turn ? 0.142 : 0.98;
 
         save();
 
@@ -952,17 +953,9 @@ int main() {
 
         me.solve(time_limit);
 
-        if (iteration) {
-            cerr << "Avg. simulations: " << gen_ct * POOL * DEPTH / iteration << endl;
-            cerr << "Avg. generations: " << gen_ct / iteration << endl;
-            cerr << "Best generation:  " << best_gen_ct / iteration << endl;
-        } else {
-            gen_ct = 0;
-            best_gen_ct = 0;
-        }
-
         print_move(me.sol.shieldTurn0[0], me.sol.thrusts0[0], me.sol.angles0[0], pods[0]);
         print_move(me.sol.shieldTurn0[1], me.sol.thrusts0[1], me.sol.angles0[1], pods[1]);
 
     }
 }
+
