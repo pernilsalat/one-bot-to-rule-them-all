@@ -31,7 +31,7 @@ enum Type {CP, POD};
 constexpr int DEPTH = 6;
 constexpr float SHIELD_DEPTH = 9; //p is 1/S_D
 constexpr float P_MUTATE_SHIELD = 15; //p for a single shield mutation. (*2 when considering both);
-constexpr int POOL = 20;
+constexpr int POOL = 5;
 constexpr int MAX_THRUST = 200;
 constexpr int AMPLITUDE_ANGLE = 36;
 constexpr int AMPLITUDE_MIN_THRUST = -30;
@@ -386,7 +386,7 @@ class Pod: public Unit {
 
 class Solution {
         public:
-                float score[ENEMIES];
+                float scores[ENEMIES];
                 int thrusts0[2];
                 int thrusts[2][ENEMIES][DEPTH-1];
                 float angles0[2];
@@ -443,6 +443,8 @@ class Solution {
                         for (int i = 0; i < ENEMIES; ++i) score[i] = -1;
                 }
 };
+
+//*****************************************************************************************//
 
 class SimpleSolution {
     public:
@@ -637,6 +639,79 @@ class SearchBot : public Bot {
                         pods[id+i]->apply(sol->thrusts[i][opp_id][turn-1], sol->angles[i][opp_id][turn-1]);
                     }
                 }
+            }
+        }
+        
+       inline void solve(float time) {
+            Solution best;
+            Solution* pool = new Solution[POOL];
+            
+            best.randomize();
+            for (int i = 0; i < POOL; ++i) {
+                Solution* newSol = new Solution();
+                newSol->randomize();
+                pool[i] = newSol;
+                compareSolutions(&best, newSol);
+            }
+            
+            while (TIME < time) {
+                int id = rnd(POOL);
+                Solution newSol = pool[id];
+                newSol.mutate();
+                
+                compareSolutions(poold[id], &newSol);
+                compareSolutions(best, &newSol);
+                
+                ++gen_ct;
+            }
+            
+            sol = best;
+        }
+        
+        inline void compareSolutions(Solution* best, Solution* test) {
+            bool same_first_move = (best->thrusts0[0]    == test->thrusts0[0]    &&
+                                    best->thrusts0[1]    == test->thrusts0[1]    &&
+                                    best->angles0[0]     == test->angles0[0]     &&
+                                    best->angles0[1]     == test->angles0[1]     &&
+                                    best->shieldTurn0[0] == test->shieldTurn0[0] &&
+                                    best->shieldTurn0[1] == test->shieldTurn0[1]);
+            
+            if (same_first_move) {
+                for (int i = 0; i <= RANDOMBOT_NUM; ++i) {
+                    if (best->scores[i] == -1) {
+                        while (turn < DEPTH) {
+                            move(best, i);
+                            oppBots[i]->move();
+                            play();
+                            ++turn;
+                        }
+                        best->scores[i] = evaluate();
+                        load();
+                    }
+                    
+                    if (test->scores[i] == -1) {
+                        while (turn < DEPTH) {
+                            move(test, i);
+                            oppBots[i]->move();
+                            play();
+                            ++turn;
+                        }
+                        test->scores[i] = evaluate();
+                        load();
+                    }
+                    
+                    if (test->scores[i] > best->scores[i]) {
+                        for (int j = 0; j < DEPTH; ++j) {
+                            best->thrusts[0][i][j] = test->thrusts[0][i][j];
+                            best->thrusts[1][i][j] = test->thrusts[1][i][j];
+                            best->angles[0][i][j]  = test->angles[0][i][j];
+                            best->angles[1][i][j]  = test->angles[1][i][j];
+                        }
+                        best->shieldTurn[0][i] = test->shieldTurn[0][i];
+                    }
+                }
+            } else {
+                //MINMAX per triar el primer moviment millor
             }
         }
 };
