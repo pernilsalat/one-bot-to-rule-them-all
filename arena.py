@@ -2,6 +2,7 @@ import subprocess
 import sys
 import time
 import random
+from .plane import Plane
 
 class Player:
     def __init__(self, name):
