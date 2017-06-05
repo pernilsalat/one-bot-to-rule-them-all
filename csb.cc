@@ -442,6 +442,34 @@ class Solution {
                 }
 };
 
+class SimpleSolution {
+    public:
+        float score = -1;
+        int thrusts[DEPTH*2];
+        float angles[DEPTH*2];
+        int shieldTurn1, shieldTurn2;
+
+        SimpleSolution(bool with_rnd = false) {
+            if (with_rnd) randomize();
+        }
+
+        inline void randomize(int idx) {
+            angles[idx] = max(-18, min(18, addrnd(-AMPLITUDE_ANGLE, AMPLITUDE_ANGLE)));
+            angles[idx+DEPTH] = max(-18, min(18, addrnd(-AMPLITUDE_ANGLE, AMPLITUDE_ANGLE)));
+
+            thrusts[idx] = max(0, min(MAX_THRUST, addrnd(AMPLITUDE_MIN_THRUST, AMPLITUDE_MAX_THRUST)));
+            thrusts[idx+DEPTH] = max(0, min(MAX_THRUST, addrnd(AMPLITUDE_MIN_THRUST, AMPLITUDE_MAX_THRUST)));
+            
+            score = -1;
+        }
+
+        inline void randomize() {
+            for (int i = 0; i < DEPTH; ++i) randomize(i, true);
+            shieldTurn1 = rnd(SHIELD_DEPTH);
+            shieldTurn2 = rnd(SHIELD_DEPTH);
+        }
+};
+
 //*****************************************************************************************//
 
 class Bot {
@@ -531,6 +559,52 @@ class ReflexBot : public Bot {
 
             if (!for_output) pod->apply(thrust, angle);
             else print_move(-1, thrust, angle, pod);
+        }
+};
+
+class RandomBot : public Bot {
+    public:
+        SimpleSolution sol;
+        Bot* oppBot;
+        
+        RandomBot(int id = 2) {this->id = id;}
+        
+        inline void move(SimpleSolution* sol) {
+            if (sol->shieldTurn1 == 0) {
+                pods[id]->apply(-1, sol->angles[turn]);
+            } else {
+                pods[id]->apply(sol->thrusts[turn], sol->angles[turn]);
+            }
+            if (sol->shieldTurn2 == 0) {
+                pods[id+1]->apply(-1, sol->angles[turn+DEPTH]);
+            } else {
+                pods[id+1]->apply(sol->thrusts[turn+DEPTH], sol->angles[turn+DEPTH]);
+            }
+        }
+
+        inline void move() {
+            move(&sol);
+        }
+        
+        inline void generate() {
+            SimpleSolution sol = SimpleSolution(true);
+            
+            for (int i = 0; i < RANDOMBOT_GENERATION_NUM; ++i) {
+                SimpleSolution newSol = SimpleSolution(true);
+                if (get_score(&sol) < get_score(&newSol)) sol = newSol;
+            }
+        }
+        
+        inline float get_score (SimpleSolution* sol) {
+            if (sol->score != -1) return sol->score;
+            while (turn < DEPTH) {
+                this->move(sol);
+                this->oppBot->move();
+                play();
+                ++turn
+            }
+            sol->score = evaluate();
+            return sol->score;
         }
 };
 
@@ -663,9 +737,15 @@ int main() {
 
     ReflexBot me_reflex;
     ReflexBot opp_reflex(2);
-
+        
     SearchBot me;
     me.oppBots.push_back(&opp_reflex);
+    
+    for (int i = 0; i < RANDOMBOT_NUM; ++i) {
+        RandomBot* opp_random = new RandomBot();
+        me.oppBots.push_back(opp_random);
+    }
+    
 
     while (1) {
         iteration++;
@@ -705,7 +785,10 @@ int main() {
 
         save();
 
-        //TODO Generate opponents
+        for (int i = 1; i <= RANDOMBOT_NUM; ++i) {
+            me.oppBots[i]->generate();
+        }
+        cerr << "Time to generate RandomBots: " << time - TIME << endl;
 
         me.solve(time_limit, iteration > 0);
 
