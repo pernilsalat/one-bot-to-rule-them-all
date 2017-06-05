@@ -36,6 +36,8 @@ constexpr int MAX_THRUST = 200;
 constexpr int AMPLITUDE_ANGLE = 36;
 constexpr int AMPLITUDE_MIN_THRUST = -30;
 constexpr int AMPLITUDE_MAX_THRUST = 300;
+constexpr int RANDOMBOT_NUM = 30;
+constexpr int RANDOMBOT_GENERATE_NUM = 30;
 
 constexpr float E = 0.00001;
 
@@ -589,7 +591,7 @@ class RandomBot : public Bot {
         inline void generate() {
             SimpleSolution sol = SimpleSolution(true);
             
-            for (int i = 0; i < RANDOMBOT_GENERATION_NUM; ++i) {
+            for (int i = 0; i < RANDOMBOT_GENERATE_NUM; ++i) {
                 SimpleSolution newSol = SimpleSolution(true);
                 if (get_score(&sol) < get_score(&newSol)) sol = newSol;
             }
@@ -613,10 +615,29 @@ class SearchBot : public Bot {
         Solution sol;
         vector<Bot*> oppBots;
 
-        SearchBot() {}
-
+        SearchBot() {};
         SearchBot(int id) {
             this->id = id;
+        }
+        
+        inline void move(Solution* sol, int opp_id) {
+            if (turn == 0) {
+                for (int i = 0; i < 2; ++i) {
+                    if (sol->shieldTurn0[i]) {
+                        pods[id+i]->apply(-1, sol->angles0[i]);
+                    } else {
+                        pods[id+i]->apply(sol->thrusts0[i], sol->angles0[i]);
+                    }
+                }
+            } else {
+                for (int i = 0; i < 2; ++i) {
+                    if (sol->shieldTurn[i][opp_id] == turn) {
+                        pods[id+i]->apply(-1, sol->angles[i][opp_id][turn-1]);
+                    } else {
+                        pods[id+i]->apply(sol->thrusts[i][opp_id][turn-1], sol->angles[i][opp_id][turn-1]);
+                    }
+                }
+            }
         }
 };
 
