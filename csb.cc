@@ -739,7 +739,9 @@ class SearchBot : public Bot {
             } else {
                 score -= dist(my_blocker, cps[opp_runner->ncpid]) * 0.5;
             }
-            score -= fabs(my_blocker->diff_angle(opp_runner)) * 0.5;
+            score -= fabs(my_blocker->diff_angle(opp_runner)) * 0.05;
+            
+            score -= dist(my_blocker, opp_runner) * 0.5;
 
             //check angl between opp blocker and my next cp
             float x1 = cps[my_runner->ncpid]->x - my_runner->x;
