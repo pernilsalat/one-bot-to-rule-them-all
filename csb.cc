@@ -383,91 +383,64 @@ class Pod: public Unit {
 //*****************************************************************************************//
 
 class Solution {
-    public:
-        float score = -1;
-        int thrusts[DEPTH*2];
-        float angles[DEPTH*2];
-        int shieldTurn1, shieldTurn2;
+        public:
+                float score[ENEMIES];
+                int thrusts0[2];
+                int thrusts[2][ENEMIES][DEPTH-1];
+                float angles0[2];
+                float angles[2][ENEMIES][DEPTH-1];
+                bool shieldTurn0[2];
+                int shieldTurn[2][ENEMIES];
 
-        Solution(bool with_rnd = false) {
-            if (with_rnd) randomize();
-        }
+                Solution() {};
 
-        inline void shift() {
-            for (int i = 1; i < DEPTH; ++i) {
-                angles[i-1]        = angles[i];
-                thrusts[i-1]       = thrusts[i];
-                angles[i-1+DEPTH]  = angles[i+DEPTH];
-                thrusts[i-1+DEPTH] = thrusts[i+DEPTH];
-            }
-            randomize(DEPTH-1, true);
+                inline void mutate () {
+                        int r_turn = rnd(DEPTH);
+                        randomize(r_turn);
 
-            shieldTurn1 = (shieldTurn1 == 0) ? rnd(SHIELD_DEPTH) : shieldTurn1 - 1;
-            shieldTurn2 = (shieldTurn2 == 0) ? rnd(SHIELD_DEPTH) : shieldTurn2 - 1;
+                        int r = rnd(100);
+                        if (r_turn) {
+                                if (r < P_MUTATE_SHIELD) {
+                                        int r_shield = addrnd(1, SHIELD_DEPTH);
+                                        for (int i = 0; i < ENEMIES; ++i) shieldTurn[0][i] = r_shield;
+                                } else if (r < P_MUTATE_SHIELD * 2) {
+                                        int r_shield = addrnd(1, SHIELD_DEPTH);
+                                        for (int i = 0; i < ENEMIES; ++i) shieldTurn[1][i] = r_shield;
+                                }
+                        } else {
+                                shieldTurn0[0] = rnd(SHIELD_DEPTH) == 0;
+                                shieldTurn0[1] = rnd(SHIELD_DEPTH) == 0;
+                        }
 
-            score = -1;
-        }
+                        for (int i = 0; i < ENEMIES; ++i) score[i] = -1;
+                }
 
-        inline void mutate() {
-            randomize(rnd(DEPTH));
-            int r = rnd(100);
-            if (r < P_MUTATE_SHIELD) {
-                shieldTurn1 = rnd(SHIELD_DEPTH);
-            } else if (r < P_MUTATE_SHIELD * 2) {
-                shieldTurn2 = rnd(SHIELD_DEPTH);
-            }
-        }
+                inline void randomize (int idx, bool full = false) {
+                        if (idx) {
+                        } else {
+                                if (full || r == 0) {
+                                        angles0[0] = max(-18, min(18, addrnd(-AMPLITUDE_ANGLE, AMPLITUDE_ANGLE)));
+                                        angles0[1] = max(-18, min(18, addrnd(-AMPLITUDE_ANGLE, AMPLITUDE_ANGLE)));
+                                }
+                                if (full || r == 1) {
+                                        thrusts0[0] = max(0, min(MAX_THRUST, addrnd(AMPLITUDE_MIN_THRUST, AMPLITUDE_MAX_THRUST)));
+                                        thrusts0[1] = max(0, min(MAX_THRUST, addrnd(AMPLITUDE_MIN_THRUST, AMPLITUDE_MAX_THRUST)));
+                                }
+                        }
+                }
 
-        inline void randomize(int idx, bool full = false) {
-            int r = rnd(2);
-            if (full || r == 0) {
-                angles[idx] = max(-18, min(18, addrnd(-AMPLITUDE_ANGLE, AMPLITUDE_ANGLE)));
-                angles[idx+DEPTH] = max(-18, min(18, addrnd(-AMPLITUDE_ANGLE, AMPLITUDE_ANGLE)));
-            }
+                inline void randomize () {
+                        for (int i = 0; i < DEPTH; ++i) randomize(i, TRUE);
+                        for (int i = 0; i < ENEMIES; ++i) {
+                                shieldTurn[0][i] = addrnd(1, SHIELD_DEPTH);
+                                shieldTurn[1][i] = addrnd(1, SHIELD_DEPTH);
+                        }
+                        shieldTurn0[0] = rnd(SHIELD_DEPTH) == 0;
+                        shieldTurn0[1] = rnd(SHIELD_DEPTH) == 0;
 
-            if (full || r == 1) {
-                thrusts[idx] = max(0, min(MAX_THRUST, addrnd(AMPLITUDE_MIN_THRUST, AMPLITUDE_MAX_THRUST)));
-                thrusts[idx+DEPTH] = max(0, min(MAX_THRUST, addrnd(AMPLITUDE_MIN_THRUST, AMPLITUDE_MAX_THRUST)));
-            }
-            score = -1;
-        }
-
-        inline void randomize() {
-            for (int i = 0; i < DEPTH; ++i) randomize(i, true);
-            shieldTurn1 = rnd(SHIELD_DEPTH);
-            shieldTurn2 = rnd(SHIELD_DEPTH);
-        }
+                        for (int i = 0; i < ENEMIES; ++i) score[i] = -1;
+                }
 };
-
-inline Solution merge(Solution* a, Solution* b) {
-    Solution child = a;
-
-    for (int i = 0; i < DEPTH; i++) {
-        if (rnd(2) == 0) {
-            child.angles[i] = b->angles[i];
-            child.angles[i+DEPTH] = b->angles[i+DEPTH];
-            child.thrusts[i] = b->thrusts[i];
-            child.thrusts[i+DEPTH] = b->thrusts[i+DEPTH];
-        }
-    }
-
-    switch (rnd(4)) {
-        case 0:
-            child.shieldTurn1 = b->shieldTurn1;
-            break;
-        case 1:
-            child.shieldTurn2 = b->shieldTurn2;
-            break;
-        case 2:
-            child.shieldTurn1 = b->shieldTurn1;
-            child.shieldTurn2 = b->shieldTurn2;
-            break;
-    }
-
-    child.score = -1;
-
-    return child;
-}
 
 //*****************************************************************************************//
 
@@ -570,208 +543,6 @@ class SearchBot : public Bot {
 
         SearchBot(int id) {
             this->id = id;
-        }
-
-        inline void move(Solution* sol) {
-            if (sol->shieldTurn1 == 0) {
-                pods[id]->apply(-1, sol->angles[turn]);
-            } else {
-                pods[id]->apply(sol->thrusts[turn], sol->angles[turn]);
-            }
-            if (sol->shieldTurn2 == 0) {
-                pods[id+1]->apply(-1, sol->angles[turn+DEPTH]);
-            } else {
-                pods[id+1]->apply(sol->thrusts[turn+DEPTH], sol->angles[turn+DEPTH]);
-            }
-        }
-
-        inline void move() {
-            move(&sol);
-        }
-
-        inline void solve(float time, bool with_seed = false) {
-            Solution best;
-            Solution* pool = new Solution[POOL];
-            Solution* newPool = new Solution[POOL];
-            int pool_ct = 0;
-
-            int current_gen = 0;
-            int best_gen = 1;
-
-            if (with_seed) {
-                best = sol;
-                best.shift();
-                pool[pool_ct++] = best;
-                while (pool_ct < POOL/5) {
-                    Solution bestProxy = sol;
-                    bestProxy.shift();
-                    bestProxy.mutate();
-                    pool[pool_ct++] = bestProxy;
-
-                    if (get_score(&bestProxy) > get_score(&best)) best = bestProxy;
-                }
-            } else {
-                best.randomize();
-                if (iteration == 0 && dist(pods[id], cps[1]) > 4000) best.thrusts[0] = 650;
-                pool[pool_ct++] = best;
-            }
-
-            while (pool_ct < POOL) {
-                Solution rSol;
-                rSol.randomize();
-                if (get_score(&rSol) > get_score(&best)) best = rSol;
-                pool[pool_ct++] = rSol;
-            }
-
-            ++gen_ct;
-            ++current_gen;
-
-            //start creating new generations
-            while (TIME < time) {
-                newPool[0] = best;
-                Solution mBest = best;
-                mBest.mutate();
-                if (get_score(&mBest) > get_score(&best)) best = mBest;
-                newPool[1] = mBest;
-
-                int poolC = 2;
-
-                while (TIME < time && poolC < POOL * .7) {
-                    int aIdx = rnd(POOL);
-                    int bIdx = rnd(POOL);
-                    while (aIdx == bIdx) bIdx = rnd(POOL);
-
-                    int firstIdx = (get_score(&pool[aIdx]) > get_score(&pool[bIdx])) ? aIdx : bIdx;
-
-                    aIdx = rnd(POOL);
-                    while (aIdx == firstIdx) aIdx = rnd(POOL);
-                    bIdx = rnd(POOL);
-                    while (aIdx == bIdx || bIdx == firstIdx) bIdx = rnd(POOL);
-
-                    int secondIdx = (get_score(&pool[aIdx]) > get_score(&pool[bIdx])) ? aIdx : bIdx;
-
-                    Solution child = merge(&pool[firstIdx], &pool[secondIdx]);
-
-                    if (get_score(&child) > get_score(&best)) {
-                        best = child;
-                        best_gen = current_gen;
-                    }
-
-                    newPool[poolC++] = child;
-                }
-
-                while (TIME < time && poolC < POOL) {
-                    int aIdx = rnd(POOL);
-                    int bIdx = rnd(POOL);
-                    while (aIdx == bIdx) bIdx = rnd(POOL);
-
-                    int Idx = (get_score(&pool[aIdx]) > get_score(&pool[bIdx])) ? aIdx : bIdx;
-
-                    Solution mutant = pool[Idx];
-                    mutant.mutate();
-
-                    if (get_score(&mutant) > get_score(&best)) {
-                        best = mutant;
-                        best_gen = current_gen;
-                    }
-
-                    newPool[poolC++] = mutant;
-                }
-
-                for (int i = 0; i < POOL; ++i) pool[i] = newPool[i];
-
-                ++gen_ct;
-                ++current_gen;
-            }
-
-            best_gen_ct += best_gen;
-            sol = best;
-        }
-
-        inline float get_score(Solution* sol) {
-            if (sol->score == -1) {
-                vector<float> scores;
-                for (Bot* oppBot : oppBots) {
-                    scores.push_back(get_bot_score(sol, oppBot));
-                }
-
-                sol->score = *min_element(scores.begin(), scores.end());
-            }
-
-            return sol->score;
-        }
-
-        inline float get_bot_score(Solution* sol, Bot* opp) {
-            float score = 0;
-            while (turn < DEPTH) {
-                move(sol);
-                opp->move();
-                play();
-                if (turn == 0) score += 0.1*evaluate();
-                ++turn;
-            }
-            score += 0.9*evaluate();
-            load();
-
-            return score;
-        }
-
-        inline float evaluate() {
-            Pod* my_runner = runner(pods[id], pods[id+1]);
-            Pod* my_blocker = blocker(pods[id], pods[id+1]);
-            Pod* opp_runner = (id == 0) ? runner(pods[(id+2)], pods[(id+3)]) : runner(pods[0], pods[1]);
-            Pod* opp_blocker = (id == 0) ? blocker(pods[(id+2)], pods[(id+3)]) : blocker(pods[0], pods[1]);
-
-            if (myTimeout <= 0) return -1e7;
-            if (hisTimeout <= 0) return 1e7;
-            if (opp_runner->checked == laps*cp_ct || opp_blocker->checked == laps*cp_ct) return -1e7;
-            if (my_runner->checked == laps*cp_ct || my_blocker->checked == laps*cp_ct) return 1e7;
-
-            float score = my_runner->score() - opp_runner->score();
-
-            float d_or = dist(opp_runner, cps[opp_runner->ncpid]);
-            float d_mb = dist(my_blocker, cps[opp_runner->ncpid]);
-
-            if (d_or < d_mb) {
-                int nncpid = (opp_runner->ncpid == cp_ct - 1) ? 0 : opp_runner->ncpid + 1;
-                score -= dist(my_blocker, cps[nncpid]) * 0.5;
-                score -= 500;
-            } else {
-                score -= dist(my_blocker, cps[opp_runner->ncpid]) * 0.5;
-            }
-            score -= fabs(my_blocker->diff_angle(opp_runner)) * 0.5;
-
-            //check angl between opp blocker and my next cp
-            float x1 = cps[my_runner->ncpid]->x - my_runner->x;
-            float y1 = cps[my_runner->ncpid]->y - my_runner->y;
-            float x2 = opp_blocker->x - my_runner->x;
-            float y2 = opp_blocker->y - my_runner->y;
-
-            float dot = x1*x2 + y1*y2;      // dot product
-            float det = x1*y2 - y1*x2;      // determinant
-            float a_bcp = atan2(det, dot); // atan2(y, x) or atan2(sin, cos)
-
-            if (a_bcp > M_PI) a_bcp = 2 * M_PI - a_bcp;
-
-            score += a_bcp * 5;
-            score -= my_runner->shield * 10;
-
-            //now for opp
-            x1 = cps[opp_runner->ncpid]->x - opp_runner->x;
-            y1 = cps[opp_runner->ncpid]->y - opp_runner->y;
-            x2 = my_blocker->x - opp_runner->x;
-            y2 = my_blocker->y - opp_runner->y;
-
-            dot = x1*x2 + y1*y2;      // dot product
-            det = x1*y2 - y1*x2;      // determinant
-            a_bcp = atan2(det, dot); // atan2(y, x) or atan2(sin, cos)
-
-            if (a_bcp > M_PI) a_bcp = 2 * M_PI - a_bcp;
-
-            score -= a_bcp * 5;
-
-
-            return score;
         }
 };
 
@@ -893,11 +664,7 @@ int main() {
     ReflexBot me_reflex;
     ReflexBot opp_reflex(2);
 
-    SearchBot opp(2);
-    opp.oppBots.push_back(&me_reflex);
-
     SearchBot me;
-    me.oppBots.push_back(&opp);
     me.oppBots.push_back(&opp_reflex);
 
     while (1) {
@@ -938,10 +705,8 @@ int main() {
 
         save();
 
-        // use this to test reflex bot behavior
-        //me_reflex.move_as_main();
+        //TODO Generate opponents
 
-        opp.solve(time_limit*0.2, iteration > 0);
         me.solve(time_limit, iteration > 0);
 
         if (iteration) {
