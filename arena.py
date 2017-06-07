@@ -153,9 +153,9 @@ class Game:
         bot0, bot1 = self.getResponse(self.Player1)
         bot2, bot3 = self.getResponse(self.Player2)
         self.Pods[0].update(bot0)
-        self.Pods[0].update(bot1)
-        self.Pods[0].update(bot2)
-        self.Pods[0].update(bot3)
+        self.Pods[1].update(bot1)
+        self.Pods[2].update(bot2)
+        self.Pods[3].update(bot3)
 
     def sendPlayers(self, debug, msg):
         self.sendPlayer1(debug,msg)

@@ -1,3 +1,4 @@
 *.swp
 Player1
 Player2
+__pycache__
