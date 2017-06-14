@@ -28,10 +28,10 @@ void print_move(int, int, float, Pod*);
 
 enum Type {CP, POD};
 
-constexpr int DEPTH = 6;
+constexpr int DEPTH = 5;
 constexpr float SHIELD_DEPTH = 9; //p is 1/S_D
 constexpr float P_MUTATE_SHIELD = 15; //p for a single shield mutation. (*2 when considering both);
-constexpr int POOL = 5;
+constexpr int POOL = 3;
 constexpr int MAX_THRUST = 200;
 constexpr int AMPLITUDE_ANGLE = 36;
 constexpr int AMPLITUDE_MIN_THRUST = -30;
@@ -51,6 +51,9 @@ int simulations = 0;
 int cp_ct, laps;
 int myTimeout = 100, hisTimeout = 100;
 int cache_myTimeout, cache_hisTimeout;
+
+int sims_ct, gen_ct;
+float generation_time;
 
 Pod* pods[4];
 Checkpoint* cps[10];
@@ -398,7 +401,7 @@ class Solution {
         int shieldTurn[2][RANDOMBOT_NUM+1];
 
         Solution() {};
-        Solution(bool with_rnd = false) {
+        Solution(bool with_rnd) {
             if (with_rnd) randomize();
         }
 
@@ -584,7 +587,7 @@ class Bot {
             }
             score -= fabs(my_blocker->diff_angle(opp_runner)) * 0.05;
             
-            score -= dist(my_blocker, opp_runner) * 0.5;
+            //score -= dist(my_blocker, opp_runner) * 0.5;
 
             //check angl between opp blocker and my next cp
             float x1 = cps[my_runner->ncpid]->x - my_runner->x;
@@ -743,80 +746,84 @@ class SearchBot : public Bot {
         }
         
        inline void solve(float time) {
-            Solution* best = new Solution(true);
-            Solution* pool[POOL];
+            Solution best = Solution(true);
+            Solution pool[POOL];
+            Solution newSol = Solution(true);
             
-            for (int i = 0; i < POOL; ++i) {
-                Solution* newSol = new Solution(true);
+            pool[0] = best;
+            for (int i = 1; i < POOL; ++i) {
+                newSol.randomize();
                 pool[i] = newSol;
                 compareSolutions(best, newSol);
             }
             
+            int id;
             while (TIME < time) {
-                int id = rnd(POOL);
-                Solution* newSol = new Solution(false);
-                newSol->copy(pool[id]);
-                newSol->mutate();
+                ++gen_ct;
+                id = rnd(POOL);
+                newSol.copy(&pool[id]);
+                newSol.mutate();
                 
                 compareSolutions(pool[id], newSol);
-                compareSolutions(best, newSol);
-                
+                compareSolutions(best, pool[id]);
             }
             
-            sol = best;
+            sol = &best;
         }
         
-        inline void compareSolutions(Solution* best, Solution* test) {
-            bool same_first_move = (best->thrusts0[0]    == test->thrusts0[0]    &&
-                                    best->thrusts0[1]    == test->thrusts0[1]    &&
-                                    best->angles0[0]     == test->angles0[0]     &&
-                                    best->angles0[1]     == test->angles0[1]     &&
-                                    best->shieldTurn0[0] == test->shieldTurn0[0] &&
-                                    best->shieldTurn0[1] == test->shieldTurn0[1]);
+        inline void compareSolutions(Solution& best, Solution& test) {
+            bool same_first_move = (best.thrusts0[0]    == test.thrusts0[0]    &&
+                                    best.thrusts0[1]    == test.thrusts0[1]    &&
+                                    best.angles0[0]     == test.angles0[0]     &&
+                                    best.angles0[1]     == test.angles0[1]     &&
+                                    best.shieldTurn0[0] == test.shieldTurn0[0] &&
+                                    best.shieldTurn0[1] == test.shieldTurn0[1]);
             
             for (int i = 0; i <= RANDOMBOT_NUM; ++i) {
-                if (best->scores[i] == -1) {
+                if (best.scores[i] == -1) {
                     while (turn < DEPTH) {
-                        move(best, i);
+                        move(&best, i);
                         oppBots[i]->move();
                         play();
                         ++turn;
                     }
-                    best->scores[i] = evaluate();
+                    best.scores[i] = evaluate();
                     load();
+                    ++sims_ct;
                 }
 
-                if (test->scores[i] == -1) {
+                if (test.scores[i] == -1) {
                     while (turn < DEPTH) {
-                        move(test, i);
+                        move(&test, i);
                         oppBots[i]->move();
                         play();
                         ++turn;
                     }
-                    test->scores[i] = evaluate();
+                    test.scores[i] = evaluate();
                     load();
+                    ++sims_ct;
                 }
             }
             
             if (same_first_move) {
                 for (int i = 0; i <= RANDOMBOT_NUM; ++i) {
-                    if (test->scores[i] > best->scores[i]) {
+                    if (test.scores[i] > best.scores[i]) {
                         for (int j = 0; j < DEPTH; ++j) {
-                            best->thrusts[0][i][j] = test->thrusts[0][i][j];
-                            best->thrusts[1][i][j] = test->thrusts[1][i][j];
-                            best->angles[0][i][j]  = test->angles[0][i][j];
-                            best->angles[1][i][j]  = test->angles[1][i][j];
+                            best.thrusts[0][i][j] = test.thrusts[0][i][j];
+                            best.thrusts[1][i][j] = test.thrusts[1][i][j];
+                            best.angles[0][i][j]  = test.angles[0][i][j];
+                            best.angles[1][i][j]  = test.angles[1][i][j];
                         }
-                        best->shieldTurn[0][i] = test->shieldTurn[0][i];
-                        best->scores[i] = test->scores[i];
+                        best.shieldTurn[0][i] = test.shieldTurn[0][i];
+                        best.scores[i] = test.scores[i];
                     }
                 }
             } else {
-                float minBest = best->scores[0];
-                float minTest = test->scores[0];
+                float minBest = best.scores[0];
+                float minTest = test.scores[0];
                 for (int i = 1; i <= RANDOMBOT_NUM; ++i) {
-                    if (best->scores[i] < minBest) minBest = best->scores[i];
-                    if (test->scores[i] < minTest) minTest = test->scores[i];
+                    if (best.scores[i] < minBest) minBest = best.scores[i];
+                    if (test.scores[i] < minTest) minTest = test.scores[i];
                 }
                 if (minTest > minBest) best = test;
             }
@@ -992,7 +999,18 @@ int main() {
             me.oppBots[i]->generate();
         }
 
+        generation_time += TIME;
+        
         me.solve(time_limit);
+        
+        if (game_turn == 0) {
+            sims_ct = 0;
+            generation_time = 0.0;
+            gen_ct = 0;
+        } else {
+            cerr << gen_ct / game_turn << " " << sims_ct / game_turn << endl;
+            cerr << round(generation_time / game_turn / .152 * 1000) / 10 << "%" << endl;
+        }
 
         print_move(me.sol->shieldTurn0[0], me.sol->thrusts0[0], me.sol->angles0[0], pods[0]);
         print_move(me.sol->shieldTurn0[1], me.sol->thrusts0[1], me.sol->angles0[1], pods[1]);
